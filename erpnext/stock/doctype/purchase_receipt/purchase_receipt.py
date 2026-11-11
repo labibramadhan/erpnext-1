@@ -1407,7 +1407,10 @@ def update_billing_percentage(pr_doc, update_modified=True, adjust_incoming_rate
 			pi_landed_cost_amount += adjusted_amt
 			item.db_set("amount_difference_with_purchase_invoice", adjusted_amt, update_modified=False)
 		elif amount and item.billed_amt > amount:
-			per_over_billed = (flt(item.billed_amt / amount, 2) * 100) - 100
+			# Round to a floating point-safe precision: billing exactly at the allowance
+			# can land just above it in binary floating point (110% at a 10% allowance
+			# gives 10.000000000000014), while anything genuinely above is still refused.
+			per_over_billed = flt(item.billed_amt / amount * 100 - 100, 6)
 			if (
 				per_over_billed > over_billing_allowance
 				and role_allowed_to_over_bill not in frappe.get_roles()

@@ -639,6 +639,26 @@ class TestPurchaseReceipt(ERPNextTestSuite):
 				"Buying Settings", "bill_for_rejected_quantity_in_purchase_invoice", bill_rejected
 			)
 
+	@ERPNextTestSuite.change_settings("Accounts Settings", {"over_billing_allowance": 10})
+	def test_over_billing_allowance_boundary(self):
+		"""Billing exactly at the allowance is accepted, anything above it is not."""
+		pr = make_purchase_receipt(qty=10, rate=1000)
+
+		# Exactly 110% of the received amount, which is the configured 10% allowance.
+		invoice = make_purchase_invoice(pr.name)
+		invoice.items[0].qty = 11
+		invoice.items[0].rate = 1000
+		invoice.submit()
+
+		invoice.reload()
+		invoice.cancel()
+
+		# Above the allowance is still refused.
+		invoice = make_purchase_invoice(pr.name)
+		invoice.items[0].qty = 11.01
+		invoice.items[0].rate = 1000
+		self.assertRaises(frappe.ValidationError, invoice.submit)
+
 	def test_purchase_receipt_for_rejected_gle_without_accepted_warehouse(self):
 		from erpnext.stock.doctype.warehouse.test_warehouse import get_warehouse
 
